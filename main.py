@@ -34,6 +34,8 @@ async def ask_mao(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message.text
     logging.info(f"Text request is: {message}")
     message = re.sub(r'/ask_mao.*_bot\b', '', message, flags=re.IGNORECASE)
+    message = re.sub(r'/ask_mao', '', message, flags=re.IGNORECASE)
+
     logging.info(f"Text request is: {message}")
     if message == "" and update.message.reply_to_message is None:
         await context.bot.send_message(chat_id=chat_id, text="The Great Leader is waiting for questions.")
@@ -45,11 +47,12 @@ async def ask_mao(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message.reply_to_message:
         logging.info("Creating response including reply.")
         if update.message.reply_to_message.photo:
+            logging.info(f"Reply to an image: {message}")
             photo = update.message.reply_to_message.photo[-1]
             file = await get_file_from_message(photo, context)
-
             mao_response = get_response_for_image(update.message.text, file)
         else:
+            logging.info(f"Reply to a text: {message}")
             mao_response = get_response(
                 f'{update.message.text}: message from another user {update.message.reply_to_message.from_user.first_name} - {update.message.reply_to_message.text}')
     else:
@@ -70,6 +73,7 @@ async def handle_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = update.message
     if message.reply_to_message:
         if message.reply_to_message.from_user.id == context.bot.id:
+            logging.info("Reply to a bot message without command.")
             await context.bot.send_message(chat_id=chat_id, text="*The Great Leader is thinking...*")
             mao_response = get_response_for_reply(update.message.text,  update.message.reply_to_message.text)
             await message.reply_text(mao_response)
