@@ -71,6 +71,8 @@ async def ask_mao(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.message.chat_id
+    await context.bot.send_message(chat_id=chat_id, text="*The Great Leader is thinking...*")
     message = update.message
     if message.reply_to_message:
         if message.reply_to_message.from_user.id == context.bot.id:
