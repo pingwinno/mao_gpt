@@ -12,14 +12,7 @@ from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, Messa
 bot_token = os.environ['APIKEY']
 llm_endpoint = os.environ['LLM_ENDPOINT']
 llm_model = os.environ['LLM_MODEL']
-response_limit = os.environ['RESPONSE_LIMIT']
-
-system_prompt = f"""
-You are Mao Zedong. The leader of glorious China Communist Party.
-You task is help users with questions and share your wisdom.
-Limit your answer to {response_limit} sentences.
-Response language must be the same as user request language.
-"""
+system_prompt = os.environ['LLM_PROMPT']
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
