@@ -13,6 +13,10 @@ bot_token = os.environ['APIKEY']
 llm_endpoint = os.environ['LLM_ENDPOINT']
 llm_model = os.environ['LLM_MODEL']
 system_prompt = os.environ['LLM_PROMPT']
+think_message = os.environ['THINK_MESSAGE']
+bot_name = os.environ['BOT_NAME']
+bot_nick = os.environ['BOT_NICK']
+
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -25,7 +29,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info("Received /start command.")
     chat_id = update.message.chat_id
     await context.bot.send_message(chat_id=chat_id,
-                                   text="I'm The Great Leader of China - Mao Zedong. I will share my wisdom with you.")
+                                   text="Hi")
 
 
 async def ask_mao(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -33,15 +37,15 @@ async def ask_mao(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     message = update.message.text
     logging.info(f"Text request is: {message}")
-    message = re.sub(r'/ask_mao.*_bot\b', '', message, flags=re.IGNORECASE)
-    message = re.sub(r'/ask_mao', '', message, flags=re.IGNORECASE)
+    message = re.sub(r'/.*bot\b', '', message, flags=re.IGNORECASE)
+    message = re.sub(f'/{bot_name}', '', message, flags=re.IGNORECASE)
 
     logging.info(f"Text request is: {message}")
     if message == "" and update.message.reply_to_message is None:
-        await context.bot.send_message(chat_id=chat_id, text="The Great Leader is waiting for questions.")
+        await context.bot.send_message(chat_id=chat_id, text="waiting for questions.")
         return
     else:
-        await context.bot.send_message(chat_id=chat_id, text="*The Great Leader is thinking...*")
+        await context.bot.send_message(chat_id=chat_id, text=think_message)
         await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
 
     if update.message.reply_to_message:
@@ -74,7 +78,7 @@ async def handle_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if message.reply_to_message:
         if message.reply_to_message.from_user.id == context.bot.id:
             logging.info("Reply to a bot message without command.")
-            await context.bot.send_message(chat_id=chat_id, text="*The Great Leader is thinking...*")
+            await context.bot.send_message(chat_id=chat_id, text="think_message")
             mao_response = get_response_for_reply(update.message.text,  update.message.reply_to_message.text)
             await message.reply_text(mao_response)
 
@@ -145,7 +149,7 @@ if __name__ == '__main__':
 
     application = ApplicationBuilder().token(bot_token).build()
     application.add_handler(CommandHandler('start', start))
-    application.add_handler(CommandHandler('ask_mao', ask_mao))
+    application.add_handler(CommandHandler(bot_name, ask_mao))
     application.add_handler(MessageHandler(filters.REPLY & ~filters.COMMAND, handle_reply))
 
     application.run_polling()
