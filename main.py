@@ -4,7 +4,7 @@ import logging
 import os
 
 from ollama import Client
-from telegram import Update
+from telegram import Update, Bot
 from telegram.constants import ChatAction
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
 
@@ -51,7 +51,7 @@ async def ask_mao(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if update.message.reply_to_message.photo:
             logging.info(f"Reply to an image: {message}")
             photo = update.message.reply_to_message.photo[-1]
-            file = await get_file_from_message(photo, context)
+            file = await get_file_from_message(photo)
             mao_response = get_response_for_image(message, file)
         else:
             logging.info(f"Reply to a text: {message}")
@@ -61,7 +61,7 @@ async def ask_mao(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logging.info("Creating direct response.")
         if update.message.photo:
             photo = update.message.photo[-1]
-            file = await get_file_from_message(photo, context)
+            file = await get_file_from_message(photo)
             mao_response = get_response_for_image(message, file)
         else:
             mao_response = get_response(message)
@@ -81,12 +81,14 @@ async def handle_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await message.reply_text(mao_response)
 
 
-async def get_file_from_message(file, context):
+async def get_file_from_message(file):
     file_id = file.file_id
-    file = await context.bot.get_file(file_id)
-    f = io.BytesIO()
-    await file.download_to_memory(out=f)
-    return f
+    file = await Bot(token=bot_token).get_file(file_id)
+    stream = io.BytesIO()
+    await file.download_to_memory(stream)
+    stream.seek(0)
+
+    return  base64.b64encode(stream.read()).decode()
 
 
 def get_response(user_input):
@@ -125,11 +127,10 @@ def get_response_for_reply(user_input, previous_mao_response):
 
 
 def get_response_for_image(user_input, image):
-    base64_image = base64.b64encode(image.read())
     if user_input == "":
         user_input = "Describe image"
     logging.info(f"User input is {user_input}.")
-    logging.info(f"Encoded image {base64_image}.")
+    logging.info(f"Encoded image {image}.")
 
     return client.chat(model=llm_model, messages=[
         {
@@ -140,7 +141,7 @@ def get_response_for_image(user_input, image):
             'role': 'user',
             'content': f'{user_input}',
             'stream': 'false',
-            "images": base64_image
+            "images": [image]
         },
     ])['message']['content']
 
