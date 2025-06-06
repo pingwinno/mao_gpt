@@ -1,4 +1,5 @@
 import base64
+import io
 import json
 import logging
 import os
@@ -29,28 +30,49 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info("Received /start command.")
     chat_id = update.message.chat_id
     await context.bot.send_message(chat_id=chat_id,
-                                   text="Hi.")
+                                   text="I'm The Great Leader of China - Mao Zedong. I will share my wisdom with you.")
 
 
 async def ask_mao(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info("Received /ask mao command.")
     chat_id = update.message.chat_id
-    await context.bot.send_message(chat_id=chat_id, text="*The Great Leader is thinking...*")
-    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
+    message = update.message.text
+    message = message.replace("/ask_mao", "")
+    if message == "":
+        await context.bot.send_message(chat_id=chat_id, text="The Great Leader is waiting for questions.")
+    else:
+        await context.bot.send_message(chat_id=chat_id, text="*The Great Leader is thinking...*")
+        await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
 
     if update.message.reply_to_message:
+        logging.info("Creating response including reply.")
         if update.message.reply_to_message.photo:
-            mao_response = get_response_for_image(update.message.text, update.message.photo)
+            photo = update.message.reply_to_message.photo[-1]
+            file = await get_file_from_message(photo, context)
+
+            mao_response = get_response_for_image(update.message.text, file)
         else:
-            mao_response = get_response(f'update.message.text: {update.message.reply_to_message.text}')
+            mao_response = get_response(
+                f'{update.message.text}: message from another user {update.message.from_user.first_name} - {update.message.reply_to_message.text}')
     else:
+        logging.info("Creating direct response.")
         if update.message.photo:
-            mao_response = get_response_for_image(update.message.text, update.message.photo)
+            photo = update.message.photo[-1]
+            file = await get_file_from_message(photo, context)
+            mao_response = get_response_for_image(update.message.text, file)
         else:
             mao_response = get_response(update.message.text)
 
     await context.bot.send_message(chat_id=chat_id, reply_to_message_id=update.message.id,
                                    text=mao_response)
+
+
+async def get_file_from_message(file, context):
+    file_id = file.file_id
+    file = await context.bot.get_file(file_id)
+    f = io.BytesIO()
+    await file.download_to_memory(out=f)
+    return f
 
 
 def get_response(user_input):
@@ -68,7 +90,10 @@ def get_response(user_input):
 
 
 def get_response_for_image(user_input, image):
-    base64_image = base64.b64encode(image)
+    base64_image = base64.b64encode(image.read())
+    if user_input == "":
+        user_input = "Describe image"
+    logging.info(f"User input is {user_input}.")
 
     return client.chat(model=llm_model, messages=[
         {
@@ -79,7 +104,7 @@ def get_response_for_image(user_input, image):
             'role': 'user',
             'content': f'{user_input}',
             'stream': 'false',
-            "images": [base64_image]
+            "images": base64_image
         },
     ])['message']['content']
 
