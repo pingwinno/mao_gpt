@@ -2,7 +2,6 @@ import base64
 import io
 import logging
 import os
-import re
 
 from ollama import Client
 from telegram import Update
@@ -16,7 +15,6 @@ system_prompt = os.environ['LLM_PROMPT']
 think_message = os.environ['THINK_MESSAGE']
 bot_name = os.environ['BOT_NAME']
 bot_nick = os.environ['BOT_NICK']
-
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -37,8 +35,8 @@ async def ask_mao(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat_id
     message = update.message.text
     logging.info(f"Text request is: {message}")
-    message = re.sub(r'/.*bot\b', '', message, flags=re.IGNORECASE)
-    message = re.sub(f'/{bot_name}', '', message, flags=re.IGNORECASE)
+    message = message.replace(f"/{bot_name}@{bot_nick}", '')
+    message = message.replace(f'/{bot_name}', '')
 
     logging.info(f"Text request is: {message}")
     if message == "" and update.message.reply_to_message is None:
@@ -78,8 +76,8 @@ async def handle_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if message.reply_to_message:
         if message.reply_to_message.from_user.id == context.bot.id:
             logging.info("Reply to a bot message without command.")
-            await context.bot.send_message(chat_id=chat_id, text="think_message")
-            mao_response = get_response_for_reply(update.message.text,  update.message.reply_to_message.text)
+            await context.bot.send_message(chat_id=chat_id, text=think_message)
+            mao_response = get_response_for_reply(update.message.text, update.message.reply_to_message.text)
             await message.reply_text(mao_response)
 
 
@@ -104,6 +102,7 @@ def get_response(user_input):
         },
     ])['message']['content']
 
+
 def get_response_for_reply(user_input, previous_mao_response):
     return client.chat(model=llm_model, messages=[
         {
@@ -123,6 +122,7 @@ def get_response_for_reply(user_input, previous_mao_response):
             'stream': 'false'
         },
     ])['message']['content']
+
 
 def get_response_for_image(user_input, image):
     base64_image = base64.b64encode(image.read())
