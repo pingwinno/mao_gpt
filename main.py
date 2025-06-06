@@ -52,19 +52,19 @@ async def ask_mao(update: Update, context: ContextTypes.DEFAULT_TYPE):
             logging.info(f"Reply to an image: {message}")
             photo = update.message.reply_to_message.photo[-1]
             file = await get_file_from_message(photo, context)
-            mao_response = get_response_for_image(update.message.text, file)
+            mao_response = get_response_for_image(message, file)
         else:
             logging.info(f"Reply to a text: {message}")
             mao_response = get_response(
-                f'{update.message.text}: message from another user {update.message.reply_to_message.from_user.first_name} - {update.message.reply_to_message.text}')
+                f'{message}: message from another user {update.message.reply_to_message.from_user.first_name} - {update.message.reply_to_message.text}')
     else:
         logging.info("Creating direct response.")
         if update.message.photo:
             photo = update.message.photo[-1]
             file = await get_file_from_message(photo, context)
-            mao_response = get_response_for_image(update.message.text, file)
+            mao_response = get_response_for_image(message, file)
         else:
-            mao_response = get_response(update.message.text)
+            mao_response = get_response(message)
 
     await context.bot.send_message(chat_id=chat_id, reply_to_message_id=update.message.id,
                                    text=mao_response)
@@ -129,6 +129,7 @@ def get_response_for_image(user_input, image):
     if user_input == "":
         user_input = "Describe image"
     logging.info(f"User input is {user_input}.")
+    logging.info(f"Encoded image {base64_image}.")
 
     return client.chat(model=llm_model, messages=[
         {
