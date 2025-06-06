@@ -38,7 +38,7 @@ async def ask_mao(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info(f"Text request is: {message}")
     message = re.sub(r'/ask_mao.*_bot\b', '', message, flags=re.IGNORECASE)
     logging.info(f"Text request is: {message}")
-    if message == "":
+    if message == "" and update.message.reply_to_message is None:
         await context.bot.send_message(chat_id=chat_id, text="The Great Leader is waiting for questions.")
         return
     else:
