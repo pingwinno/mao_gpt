@@ -53,7 +53,7 @@ async def ask_mao(update: Update, context: ContextTypes.DEFAULT_TYPE):
             photo = update.message.reply_to_message.photo[-1]
             file = await get_file_from_message(photo)
             mao_response = get_response_for_image(message, file)
-        else:
+        elif update.message.from_user.id !=update.message.reply_to_message.from_user.id:
             logging.info(f"Reply to a text: {message}")
             mao_response = get_response(
                 f'{message}: message from another user {update.message.reply_to_message.from_user.first_name} - {update.message.reply_to_message.text}')
@@ -153,5 +153,6 @@ if __name__ == '__main__':
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CommandHandler(bot_name, ask_mao))
     application.add_handler(MessageHandler(filters.REPLY & ~filters.COMMAND, handle_reply))
+    application.add_handler(MessageHandler(filters.ChatType.PRIVATE & ~filters.REPLY, ask_mao))
 
     application.run_polling()
