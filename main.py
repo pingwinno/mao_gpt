@@ -37,7 +37,7 @@ async def ask_mao(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info(f"Text request is: {message}")
     message = message.replace(f"/{bot_name}@{bot_nick}", '')
     message = message.replace(f'/{bot_name}', '')
-
+    mao_response = "Something got wrong. Ask again."
     logging.info(f"Text request is: {message}")
     if message == "" and update.message.reply_to_message is None:
         await context.bot.send_message(chat_id=chat_id, text="waiting for questions.")
