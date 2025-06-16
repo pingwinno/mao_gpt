@@ -53,10 +53,9 @@ async def ask_mao(update: Update, context: ContextTypes.DEFAULT_TYPE):
             photo = update.message.reply_to_message.photo[-1]
             file = await get_file_from_message(photo)
             mao_response = get_response_for_image(message, file)
-        elif update.message.from_user.id !=update.message.reply_to_message.from_user.id:
+        elif update.message.reply_to_message:
             logging.info(f"Reply to a text: {message}")
-            mao_response = get_response(
-                f'{message}: message from another user {update.message.reply_to_message.from_user.first_name} - {update.message.reply_to_message.text}')
+            mao_response = get_response(f'{message}: message from another user {update.message.reply_to_message.from_user.first_name} - {update.message.reply_to_message.text}')
     else:
         logging.info("Creating direct response.")
         if update.message.photo:
