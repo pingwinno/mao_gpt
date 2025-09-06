@@ -34,39 +34,52 @@ async def ask_mao(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info("Received /ask mao command.")
     chat_id = update.message.chat_id
     message = update.message.text
-    logging.info(f"Text request is: {message}")
-    message = message.replace(f"/{bot_name}@{bot_nick}", '')
-    message = message.replace(f'/{bot_name}', '')
-    mao_response = "Something got wrong. Ask again."
-    logging.info(f"Text request is: {message}")
-    if message == "" and update.message.reply_to_message is None:
-        await context.bot.send_message(chat_id=chat_id, text="waiting for questions.")
-        return
-    else:
-        await context.bot.send_message(chat_id=chat_id, text=think_message)
-        await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
-
-    if update.message.reply_to_message:
-        logging.info("Creating response including reply.")
-        if update.message.reply_to_message.photo:
-            logging.info(f"Reply to an image: {message}")
-            photo = update.message.reply_to_message.photo[-1]
-            file = await get_file_from_message(photo)
-            mao_response = get_response_for_image(message, file)
-        elif update.message.reply_to_message:
-            logging.info(f"Reply to a text: {message}")
-            mao_response = get_response(f'{message}: message from another user {update.message.reply_to_message.from_user.first_name} - {update.message.reply_to_message.text}')
-    else:
-        logging.info("Creating direct response.")
-        if update.message.photo:
-            photo = update.message.photo[-1]
-            file = await get_file_from_message(photo)
-            mao_response = get_response_for_image(message, file)
+    try:
+        logging.info(f"Text request is: {message}")
+        message = message.replace(f"/{bot_name}@{bot_nick}", '')
+        message = message.replace(f'/{bot_name}', '')
+        mao_response = "Something got wrong. Ask again."
+        logging.info(f"Text request is: {message}")
+        if message == "" and update.message.reply_to_message is None:
+            await context.bot.send_message(chat_id=chat_id, text="waiting for questions.")
+            return
         else:
-            mao_response = get_response(message)
+            await context.bot.send_message(chat_id=chat_id, text=think_message)
+            await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
 
-    await context.bot.send_message(chat_id=chat_id, reply_to_message_id=update.message.id,
-                                   text=mao_response)
+        if update.message.reply_to_message:
+            logging.info("Creating response including reply.")
+            if update.message.reply_to_message.photo:
+                logging.info(f"Reply to an image: {message}")
+                photo = update.message.reply_to_message.photo[-1]
+                file = await get_file_from_message(photo)
+                mao_response = get_response_for_image(message, file)
+            elif update.message.reply_to_message.voice:
+                voice = update.message.reply_to_message.voice
+                file = await get_file_from_message(voice)
+                mao_response = get_response_for_voice(message, file)
+            elif update.message.reply_to_message:
+                logging.info(f"Reply to a text: {message}")
+                mao_response = get_response(
+                    f'{message}: message from another user {update.message.reply_to_message.from_user.first_name} - {update.message.reply_to_message.text}')
+        else:
+            logging.info("Creating direct response.")
+            if update.message.photo:
+                photo = update.message.photo[-1]
+                file = await get_file_from_message(photo)
+                mao_response = get_response_for_image(message, file)
+            elif update.message.voice:
+                voice = update.message.voice
+                file = await get_file_from_message(voice)
+                mao_response = get_response_for_voice(message, file)
+            else:
+                mao_response = get_response(message)
+        await context.bot.send_message(chat_id=chat_id, reply_to_message_id=update.message.id,
+                                       text=mao_response)
+    except Exception as e:
+        logging.error(e)
+        await context.bot.send_message(chat_id=chat_id, reply_to_message_id=update.message.id,
+                                       text=e)
 
 
 async def handle_reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -87,25 +100,30 @@ async def get_file_from_message(file):
     await file.download_to_memory(stream)
     stream.seek(0)
 
-    return  base64.b64encode(stream.read()).decode()
+    return base64.b64encode(stream.read()).decode()
 
 
 def get_response(user_input):
-    return client.chat(model=llm_model, messages=[
-        {
-            "role": "system",
-            "content": system_prompt,
-        },
-        {
-            'role': 'user',
-            'content': f'{user_input}',
-            'stream': 'false'
-        },
-    ])['message']['content']
+    return client.chat(model=llm_model, options={
+        'nothink': True
+    },
+                       messages=[
+                           {
+                               "role": "system",
+                               "content": system_prompt,
+                           },
+                           {
+                               'role': 'user',
+                               'content': f'{user_input}',
+                               'stream': 'false'
+                           },
+                       ])['message']['content']
 
 
 def get_response_for_reply(user_input, previous_mao_response):
-    return client.chat(model=llm_model, messages=[
+    return client.chat(model=llm_model, options={
+        'nothink': True
+    }, messages=[
         {
             "role": "system",
             "content": system_prompt,
@@ -131,7 +149,9 @@ def get_response_for_image(user_input, image):
     logging.info(f"User input is {user_input}.")
     logging.info(f"Encoded image {image}.")
 
-    return client.chat(model=llm_model, messages=[
+    return client.chat(model=llm_model, options={
+        'nothink': True
+    }, messages=[
         {
             "role": "system",
             "content": system_prompt,
@@ -141,6 +161,28 @@ def get_response_for_image(user_input, image):
             'content': f'{user_input}',
             'stream': 'false',
             "images": [image]
+        },
+    ])['message']['content']
+
+
+def get_response_for_voice(user_input, image):
+    if user_input == "":
+        user_input = "Transcribe audio"
+    logging.info(f"User input is {user_input}.")
+    logging.info(f"Encoded audio {image}.")
+
+    return client.chat(model=llm_model, options={
+        'nothink': True
+    }, messages=[
+        {
+            "role": "system",
+            "content": system_prompt,
+        },
+        {
+            'role': 'user',
+            'content': f'{user_input}',
+            'stream': 'false',
+            "audio": [image]
         },
     ])['message']['content']
 
